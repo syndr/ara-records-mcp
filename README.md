@@ -15,29 +15,9 @@ This MCP server provides programmatic access to Ara Records (Ansible Run Analysi
 
 ### Installation
 
-#### Install via npx (Easiest)
+> **Note**: This package is not yet published to npm. Currently only GitHub and local clone installations are available.
 
-Use `claude mcp add` to install directly via npx:
-
-```bash
-claude mcp add ara-api -- npx -y ara-records-mcp
-```
-
-With custom ARA server:
-
-```bash
-claude mcp add ara-api -- npx -y ara-records-mcp --api-server http://ara.example.com:8080
-```
-
-With authentication:
-
-```bash
-claude mcp add ara-api -- npx -y ara-records-mcp --api-server https://ara.example.com --username admin --password secret
-```
-
-**Note**: When published to npm with a scoped package name, use `@syndr/ara-records-mcp` instead.
-
-#### Install from GitHub (Recommended)
+#### Install from GitHub
 
 Install directly from the GitHub repository:
 
