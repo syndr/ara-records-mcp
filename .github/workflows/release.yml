@@ -69,6 +69,13 @@ jobs:
             echo "✓ Creating new tag v$VERSION"
             git tag -a "v$VERSION" -m "Release v$VERSION"
             git push origin "v$VERSION"
+            # Verify the tag exists on the remote after push
+            if git ls-remote --tags origin | grep -q "refs/tags/v$VERSION$"; then
+              echo "✓ Tag v$VERSION successfully pushed to remote"
+            else
+              echo "❌ Failed to push tag v$VERSION to remote. Aborting."
+              exit 1
+            fi
           fi
 
       - name: Create GitHub Release
