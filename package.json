@@ -1,10 +1,13 @@
 {
-  "name": "ara-records-mcp",
+  "name": "@ultroncore/ara-records-mcp",
   "version": "1.0.0",
   "description": "MCP server for Ara Records API integration",
   "main": "ara-server.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
-    "ara-records-mcp": "./ara-server.js"
+    "ara-records-mcp": "ara-server.js"
   },
   "scripts": {
     "start": "node ara-server.js"
