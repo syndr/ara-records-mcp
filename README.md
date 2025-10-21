@@ -264,6 +264,49 @@ Tests cover:
 - **CLI Argument Parsing**: Validates `--api-server`, `--username`, `--password` flags and defaults
 - **Authentication Headers**: Tests Basic auth header generation and base64 encoding
 - **Pagination Logic**: Validates automatic limit/order defaults and parameter preservation
+- **MCP Schema Validation**: Tests resources, tools, URI mappings, and response formats
+
+### Publishing Releases
+
+The project uses automated GitHub Actions workflows for releases:
+
+#### Setup npm Token (One-time)
+
+1. Create an npm access token at https://www.npmjs.com/settings/your-username/tokens
+2. Add the token as a GitHub repository secret:
+   - Go to repository Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Your npm token
+
+#### Releasing a New Version
+
+1. Update version in `package.json` (following [semver](https://semver.org/)):
+   ```bash
+   # For bug fixes
+   npm version patch
+
+   # For new features (backward compatible)
+   npm version minor
+
+   # For breaking changes
+   npm version major
+   ```
+
+2. Commit and push to main branch:
+   ```bash
+   git add package.json
+   git commit -m "Bump version to X.Y.Z"
+   git push origin main
+   ```
+
+3. The Release workflow automatically:
+   - Detects version change
+   - Creates git tag (e.g., `v1.1.0`)
+   - Creates GitHub release with auto-generated notes
+   - Publishes package to npm
+
+You can also trigger releases manually via workflow_dispatch in the GitHub Actions tab.
 
 ### Testing the MCP Server
 
