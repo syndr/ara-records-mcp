@@ -10,7 +10,8 @@
     "ara-records-mcp": "ara-server.js"
   },
   "scripts": {
-    "start": "node ara-server.js"
+    "start": "node ara-server.js",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",

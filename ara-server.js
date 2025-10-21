@@ -498,7 +498,17 @@ async function main() {
   console.error('*whirring* Ara MCP server activated. Testing chamber operational.');
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Only run the server if this file is executed directly (not required by tests)
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}
+
+// Export functions for testing
+module.exports = {
+  parseArgs,
+  createAuthHeaders,
+  addPaginationDefaults,
+};

@@ -238,15 +238,40 @@ All requests include automatic pagination to prevent token overflow:
 - Claude Code restart required after installation to load the MCP server
 - Supports GET/POST operations only
 
-## Testing the Implementation
+## Development
 
-### Verify Ara API is Running
+### Running Tests
+
+The project includes a comprehensive test suite using Node.js built-in test runner (no dependencies required).
+
+Run all tests:
+
+```bash
+npm test
+```
+
+Run tests in watch mode (Node 19+):
+
+```bash
+node --test --watch
+```
+
+### Test Coverage
+
+Tests cover:
+- **CLI Argument Parsing**: Validates `--api-server`, `--username`, `--password` flags and defaults
+- **Authentication Headers**: Tests Basic auth header generation and base64 encoding
+- **Pagination Logic**: Validates automatic limit/order defaults and parameter preservation
+
+### Testing the MCP Server
+
+#### Verify Ara API is Running
 
 ```bash
 curl -s http://localhost:8000/api/v1/ | jq
 ```
 
-### Test MCP Server Startup
+#### Test MCP Server Startup
 
 ```bash
 timeout 2 node ara-server.js 2>&1
@@ -254,7 +279,7 @@ timeout 2 node ara-server.js 2>&1
 
 Expected output: `*whirring* Ara MCP server activated. Testing chamber operational.`
 
-### Verification Steps
+#### Verification Steps
 
 1. **Ara API Check**: Ensure Ara is running and responding at `http://localhost:8000/api/v1/`
 2. **MCP Server Test**: Run the server directly to confirm no startup errors
