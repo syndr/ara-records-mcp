@@ -15,7 +15,55 @@ This MCP server provides programmatic access to Ara Records (Ansible Run Analysi
 
 ### Installation
 
-> **Note**: This package is not yet published to npm. Currently only GitHub and local clone installations are available.
+#### Install via npx (Recommended)
+
+The easiest way to install is using `claude mcp add` with npx:
+
+```bash
+# Local installation (project-specific, default)
+claude mcp add ara-api -- npx -y @ultroncore/ara-records-mcp
+
+# User installation (available globally for your user)
+claude mcp add --scope user ara-api -- npx -y @ultroncore/ara-records-mcp
+```
+
+With custom ARA server:
+
+```bash
+claude mcp add --scope user ara-api -- npx -y @ultroncore/ara-records-mcp --api-server http://ara.example.com:8080
+```
+
+With authentication:
+
+```bash
+claude mcp add --scope user ara-api -- npx -y @ultroncore/ara-records-mcp --api-server https://ara.example.com --username admin --password secret
+```
+
+**Scope options:**
+- `local` (default): Project-specific installation
+- `user`: Available globally for your user account
+- `project`: Project-specific (same as local)
+
+You can also run it directly without installation:
+
+```bash
+npx @ultroncore/ara-records-mcp --help
+```
+
+#### Install Globally via npm
+
+For global installation (allows running `ara-records-mcp` from anywhere):
+
+```bash
+npm install -g @ultroncore/ara-records-mcp
+```
+
+Then run directly:
+
+```bash
+ara-records-mcp --help
+ara-records-mcp --api-server http://localhost:8000
+```
 
 #### Install from GitHub
 
@@ -163,7 +211,7 @@ Additional authentication methods (API tokens, OAuth, etc.) may be added in futu
 **Example with Basic Auth (CLI Arguments via npx)**:
 
 ```bash
-claude mcp add ara-api -- npx -y ara-records-mcp --api-server https://ara.example.com --username your-username --password your-password
+claude mcp add ara-api -- npx -y @ultroncore/ara-records-mcp --api-server https://ara.example.com --username your-username --password your-password
 ```
 
 **Note**: Both `ARA_USERNAME` and `ARA_PASSWORD` (or `--username` and `--password`) must be set for authentication to be enabled. If only one is provided, no authentication will be used.
