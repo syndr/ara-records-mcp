@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if version changed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            CURRENT_VERSION=$(jq -r .version package.json)
+            git checkout HEAD^
+            PREVIOUS_VERSION=$(jq -r .version package.json)
+            git checkout -
+
+            if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+              echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "Version unchanged: $CURRENT_VERSION"
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(jq -r .version package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  release:
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Git Tag
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          release_name: v${{ needs.check-version.outputs.version }}
+          body: |
+            Release v${{ needs.check-version.outputs.version }}
+
+            See [CHANGELOG](https://github.com/${{ github.repository }}/commits/v${{ needs.check-version.outputs.version }}) for details.
+          draft: false
+          prerelease: false
+
+  publish:
+    needs: [check-version, release]
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check NPM_TOKEN availability
+        id: check_token
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️  NPM_TOKEN secret is not configured"
+            echo "⚠️  Skipping npm publish step"
+            echo "⚠️  To enable automatic npm publishing, add NPM_TOKEN to repository secrets"
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+            echo "✓ NPM_TOKEN is configured, will publish to npm"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_token.outputs.has_token == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        if: steps.check_token.outputs.has_token == 'true'
+        run: npm ci
+
+      - name: Publish to npm
+        if: steps.check_token.outputs.has_token == 'true'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Skip npm publish
+        if: steps.check_token.outputs.has_token == 'false'
+        run: |
+          echo "📦 GitHub release created successfully"
+          echo "⏭️  Skipping npm publish (NPM_TOKEN not configured)"
+          echo ""
+          echo "To enable automatic npm publishing:"
+          echo "1. Create an npm access token at https://www.npmjs.com/settings/tokens"
+          echo "2. Add it as NPM_TOKEN in repository Settings → Secrets and variables → Actions"

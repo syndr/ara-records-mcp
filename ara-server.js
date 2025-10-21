@@ -79,6 +79,54 @@ function createAuthHeaders() {
   return headers;
 }
 
+// Get list of MCP resources
+function getResourcesList() {
+  return [
+    {
+      uri: 'ara://playbooks',
+      name: 'Ara Playbooks',
+      description: 'List of recorded Ansible playbooks',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://plays',
+      name: 'Ara Plays',
+      description: 'List of recorded Ansible plays',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://tasks',
+      name: 'Ara Tasks',
+      description: 'List of recorded Ansible tasks',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://hosts',
+      name: 'Ara Hosts',
+      description: 'List of recorded Ansible hosts',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://results',
+      name: 'Ara Results',
+      description: 'List of recorded Ansible task results',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://latesthosts',
+      name: 'Ara Latest Hosts',
+      description: 'Latest playbook result for each host',
+      mimeType: 'application/json',
+    },
+    {
+      uri: 'ara://running',
+      name: 'Running Playbooks',
+      description: 'Currently executing Ansible playbooks (for real-time monitoring)',
+      mimeType: 'application/json',
+    },
+  ];
+}
+
 const server = new Server({
   name: 'ara-api',
   version: '1.0.0',
@@ -92,57 +140,12 @@ const server = new Server({
 // List available resources
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
   return {
-    resources: [
-      {
-        uri: 'ara://playbooks',
-        name: 'Ara Playbooks',
-        description: 'List of recorded Ansible playbooks',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://plays',
-        name: 'Ara Plays',
-        description: 'List of recorded Ansible plays',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://tasks',
-        name: 'Ara Tasks',
-        description: 'List of recorded Ansible tasks',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://hosts',
-        name: 'Ara Hosts',
-        description: 'List of recorded Ansible hosts',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://results',
-        name: 'Ara Results',
-        description: 'List of recorded Ansible task results',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://latesthosts',
-        name: 'Ara Latest Hosts',
-        description: 'Latest playbook result for each host',
-        mimeType: 'application/json',
-      },
-      {
-        uri: 'ara://running',
-        name: 'Running Playbooks',
-        description: 'Currently executing Ansible playbooks (for real-time monitoring)',
-        mimeType: 'application/json',
-      },
-    ],
+    resources: getResourcesList(),
   };
 });
 
-// Read specific resources
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
-
+// Map resource URI to API endpoint
+function mapResourceUriToEndpoint(uri) {
   const endpoints = {
     'ara://playbooks': `${API_PATH}/playbooks`,
     'ara://plays': `${API_PATH}/plays`,
@@ -158,6 +161,26 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     throw new Error(`Unknown resource: ${uri}`);
   }
 
+  return endpoint;
+}
+
+// Build MCP resource response format
+function buildResourceResponse(uri, data) {
+  return {
+    contents: [{
+      uri,
+      mimeType: 'application/json',
+      text: JSON.stringify(data, null, 2),
+    }],
+  };
+}
+
+// Read specific resources
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+
+  const endpoint = mapResourceUriToEndpoint(uri);
+
   // Apply pagination defaults to resource endpoints too
   const paginatedEndpoint = addPaginationDefaults(endpoint);
 
@@ -172,84 +195,83 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
     const data = await response.json();
 
-    return {
-      contents: [{
-        uri,
-        mimeType: 'application/json',
-        text: JSON.stringify(data, null, 2),
-      }],
-    };
+    return buildResourceResponse(uri, data);
   } catch (error) {
     throw new Error(`Failed to fetch from Ara API: ${error.message}`);
   }
 });
 
+// Get list of MCP tools
+function getToolsList() {
+  return [
+    {
+      name: 'ara_query',
+      description: 'Query Ara API endpoints with automatic pagination defaults (limit=3, order=-started)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          endpoint: {
+            type: 'string',
+            description: 'API endpoint path (e.g., /api/v1/playbooks, /api/v1/plays/1). Supports query parameters like ?limit=10&offset=20&order=-started. If no limit is specified, defaults to 3 results.',
+          },
+          method: {
+            type: 'string',
+            enum: ['GET', 'POST'],
+            default: 'GET',
+          },
+          body: {
+            type: 'object',
+            description: 'Request body for POST requests',
+          },
+        },
+        required: ['endpoint'],
+      },
+    },
+    {
+      name: 'watch_playbook',
+      description: 'Monitor a playbook execution in real-time. Returns detailed progress including task completion, current status, and execution timeline. Call repeatedly to track progress.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          playbook_id: {
+            type: 'number',
+            description: 'The ID of the playbook to monitor',
+          },
+          include_tasks: {
+            type: 'boolean',
+            description: 'Include detailed task information (default: true)',
+            default: true,
+          },
+          include_results: {
+            type: 'boolean',
+            description: 'Include task result details (default: false, can be verbose)',
+            default: false,
+          },
+        },
+        required: ['playbook_id'],
+      },
+    },
+    {
+      name: 'get_playbook_status',
+      description: 'Get a quick summary of playbook execution status without detailed task information. Useful for checking if a playbook is complete or monitoring multiple playbooks.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          playbook_id: {
+            type: 'number',
+            description: 'The ID of the playbook to check',
+          },
+        },
+        required: ['playbook_id'],
+      },
+    },
+  ];
+}
+
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
-    tools: [
-      {
-        name: 'ara_query',
-        description: 'Query Ara API endpoints with automatic pagination defaults (limit=3, order=-started)',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            endpoint: {
-              type: 'string',
-              description: 'API endpoint path (e.g., /api/v1/playbooks, /api/v1/plays/1). Supports query parameters like ?limit=10&offset=20&order=-started. If no limit is specified, defaults to 3 results.',
-            },
-            method: {
-              type: 'string',
-              enum: ['GET', 'POST'],
-              default: 'GET',
-            },
-            body: {
-              type: 'object',
-              description: 'Request body for POST requests',
-            },
-          },
-          required: ['endpoint'],
-        },
-      },
-      {
-        name: 'watch_playbook',
-        description: 'Monitor a playbook execution in real-time. Returns detailed progress including task completion, current status, and execution timeline. Call repeatedly to track progress.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            playbook_id: {
-              type: 'number',
-              description: 'The ID of the playbook to monitor',
-            },
-            include_tasks: {
-              type: 'boolean',
-              description: 'Include detailed task information (default: true)',
-              default: true,
-            },
-            include_results: {
-              type: 'boolean',
-              description: 'Include task result details (default: false, can be verbose)',
-              default: false,
-            },
-          },
-          required: ['playbook_id'],
-        },
-      },
-      {
-        name: 'get_playbook_status',
-        description: 'Get a quick summary of playbook execution status without detailed task information. Useful for checking if a playbook is complete or monitoring multiple playbooks.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            playbook_id: {
-              type: 'number',
-              description: 'The ID of the playbook to check',
-            },
-          },
-          required: ['playbook_id'],
-        },
-      },
-    ],
+    tools: getToolsList(),
   };
 });
 
@@ -498,7 +520,21 @@ async function main() {
   console.error('*whirring* Ara MCP server activated. Testing chamber operational.');
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Only run the server if this file is executed directly (not required by tests)
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}
+
+// Export functions for testing
+module.exports = {
+  parseArgs,
+  createAuthHeaders,
+  addPaginationDefaults,
+  getResourcesList,
+  getToolsList,
+  mapResourceUriToEndpoint,
+  buildResourceResponse,
+};
