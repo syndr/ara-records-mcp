@@ -125,12 +125,28 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies
+      - name: Check if version already published to npm
         if: steps.check_token.outputs.has_token == 'true'
+        id: check_npm
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          PACKAGE_NAME="@ultroncore/ara-records-mcp"
+
+          # Check if this version exists on npm
+          if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "ℹ️  Version $VERSION is already published to npm, skipping publish"
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "✓ Version $VERSION not yet published, will publish to npm"
+          fi
+
+      - name: Install dependencies
+        if: steps.check_token.outputs.has_token == 'true' && steps.check_npm.outputs.already_published == 'false'
         run: npm ci
 
       - name: Publish to npm
-        if: steps.check_token.outputs.has_token == 'true'
+        if: steps.check_token.outputs.has_token == 'true' && steps.check_npm.outputs.already_published == 'false'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
