@@ -509,11 +509,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error(`Unknown tool: ${name}`);
 });
 
+// Health check function to validate ARA server connectivity
+async function checkAraServerHealth() {
+  try {
+    const healthCheckUrl = `${ARA_API_SERVER}${API_PATH}/`;
+    console.error(`[HEALTH CHECK] Checking connectivity to: ${healthCheckUrl}`);
+
+    const response = await fetch(healthCheckUrl, {
+      headers: createAuthHeaders(),
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.error(`[HEALTH CHECK] ✓ ARA API is accessible (version: ${data.version || 'unknown'})`);
+    return true;
+  } catch (error) {
+    console.error(`[HEALTH CHECK] ✗ Failed to connect to ARA server: ${error.message}`);
+    console.error(`[HEALTH CHECK] Server URL: ${ARA_API_SERVER}`);
+    console.error(`[HEALTH CHECK] Please verify:`);
+    console.error(`[HEALTH CHECK]   1. ARA server is running`);
+    console.error(`[HEALTH CHECK]   2. Server URL is correct`);
+    console.error(`[HEALTH CHECK]   3. Authentication credentials are valid (if required)`);
+    throw new Error(`ARA server health check failed: ${error.message}`);
+  }
+}
+
 // Start the server
 async function main() {
   console.error(`[STARTUP] ARA_API_SERVER: ${ARA_API_SERVER}`);
   console.error(`[STARTUP] ARA_USERNAME: ${ARA_USERNAME}`);
   console.error(`[STARTUP] ARA_PASSWORD: ${ARA_PASSWORD ? '***SET***' : '***NOT SET***'}`);
+
+  // Perform health check before starting MCP server
+  await checkAraServerHealth();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
