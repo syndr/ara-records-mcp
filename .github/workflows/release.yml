@@ -16,7 +16,7 @@ jobs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -54,7 +54,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Create Git Tag
         run: |
@@ -65,18 +65,16 @@ jobs:
           git push origin "v$VERSION"
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.check-version.outputs.version }}
-          release_name: v${{ needs.check-version.outputs.version }}
-          body: |
-            Release v${{ needs.check-version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "Release v$VERSION
 
-            See [CHANGELOG](https://github.com/${{ github.repository }}/commits/v${{ needs.check-version.outputs.version }}) for details.
-          draft: false
-          prerelease: false
+          See [CHANGELOG](https://github.com/${{ github.repository }}/commits/v$VERSION) for details." \
+            --generate-notes
 
   publish:
     needs: [check-version, release]
@@ -84,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check NPM_TOKEN availability
         id: check_token
@@ -101,7 +99,7 @@ jobs:
 
       - name: Setup Node.js
         if: steps.check_token.outputs.has_token == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
