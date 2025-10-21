@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ara-api": {
+      "command": "node",
+      "args": [
+        "ara-server.js"
+      ],
+      "env": {
+        "ARA_API_SERVER": "http://localhost:8000"
+      }
+    }
+  }
+}

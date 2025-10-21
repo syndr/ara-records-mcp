@@ -1,0 +1,43 @@
+{
+  "name": "ara-records-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Ara Records API integration",
+  "main": "ara-server.js",
+  "bin": {
+    "ara-records-mcp": "./ara-server.js"
+  },
+  "scripts": {
+    "start": "node ara-server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syndr/ara-records-mcp.git"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ara",
+    "ansible",
+    "ara-records",
+    "ansible-run-analysis",
+    "claude-code"
+  ],
+  "author": "syndr",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/syndr/ara-records-mcp/issues"
+  },
+  "homepage": "https://github.com/syndr/ara-records-mcp#readme",
+  "files": [
+    "ara-server.js",
+    "setup.sh",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
