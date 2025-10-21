@@ -1,5 +1,7 @@
 # Ara Records MCP Server
 
+[![CI](https://github.com/syndr/ara-records-mcp/workflows/CI/badge.svg)](https://github.com/syndr/ara-records-mcp/actions)
+
 A custom Model Context Protocol (MCP) server for integrating with the Ara Records API, enabling Ansible playbook execution monitoring through Claude Code.
 
 ## Overview
