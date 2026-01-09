@@ -216,7 +216,7 @@ function getToolsList() {
           },
           method: {
             type: 'string',
-            enum: ['GET', 'POST'],
+            enum: ['GET', 'POST', 'DELETE'],
             default: 'GET',
           },
           body: {
@@ -225,6 +225,35 @@ function getToolsList() {
           },
         },
         required: ['endpoint'],
+      },
+    },
+    {
+      name: 'delete_playbook',
+      description: 'Delete a playbook record from ARA. This permanently removes the playbook and all associated plays, tasks, and results.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          playbook_id: {
+            type: 'number',
+            description: 'The ID of the playbook to delete',
+          },
+        },
+        required: ['playbook_id'],
+      },
+    },
+    {
+      name: 'delete_playbooks_bulk',
+      description: 'Delete multiple playbook records from ARA in bulk. Useful for cleaning up old records. Returns a summary of deletions.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          playbook_ids: {
+            type: 'array',
+            items: { type: 'number' },
+            description: 'Array of playbook IDs to delete',
+          },
+        },
+        required: ['playbook_ids'],
       },
     },
     {
@@ -396,8 +425,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (name === 'ara_query') {
     const { endpoint, method = 'GET', body } = args;
 
-    // Apply pagination defaults to prevent token overflow
-    const paginatedEndpoint = addPaginationDefaults(endpoint);
+    // Apply pagination defaults to prevent token overflow (only for GET requests)
+    const finalEndpoint = method === 'GET' ? addPaginationDefaults(endpoint) : endpoint;
 
     const options = {
       method,
@@ -409,8 +438,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     try {
-      const fullUrl = `${ARA_API_SERVER}${paginatedEndpoint}`;
-      console.error(`[DEBUG] Fetching URL: ${fullUrl}`);
+      const fullUrl = `${ARA_API_SERVER}${finalEndpoint}`;
+      console.error(`[DEBUG] ${method} URL: ${fullUrl}`);
       console.error(`[DEBUG] Headers:`, JSON.stringify(options.headers, null, 2));
 
       const response = await fetch(fullUrl, options);
@@ -419,6 +448,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText} - URL: ${fullUrl}`);
+      }
+
+      // DELETE requests may return 204 No Content
+      if (response.status === 204 || method === 'DELETE') {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, message: `${method} request successful`, endpoint: finalEndpoint }, null, 2),
+            },
+          ],
+        };
       }
 
       const data = await response.json();
@@ -441,6 +482,85 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ],
       };
     }
+  }
+
+  if (name === 'delete_playbook') {
+    const { playbook_id } = args;
+
+    try {
+      const deleteUrl = `${ARA_API_SERVER}${API_PATH}/playbooks/${playbook_id}`;
+      console.error(`[DEBUG] DELETE URL: ${deleteUrl}`);
+
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: createAuthHeaders(),
+      });
+
+      console.error(`[DEBUG] Response status: ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ success: true, message: `Playbook ${playbook_id} deleted successfully` }, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error deleting playbook ${playbook_id}: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  if (name === 'delete_playbooks_bulk') {
+    const { playbook_ids } = args;
+
+    const results = {
+      total: playbook_ids.length,
+      deleted: [],
+      failed: [],
+    };
+
+    for (const playbook_id of playbook_ids) {
+      try {
+        const deleteUrl = `${ARA_API_SERVER}${API_PATH}/playbooks/${playbook_id}`;
+        console.error(`[DEBUG] DELETE URL: ${deleteUrl}`);
+
+        const response = await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: createAuthHeaders(),
+        });
+
+        if (response.ok || response.status === 204) {
+          results.deleted.push(playbook_id);
+        } else {
+          results.failed.push({ id: playbook_id, error: `HTTP ${response.status}: ${response.statusText}` });
+        }
+      } catch (error) {
+        results.failed.push({ id: playbook_id, error: error.message });
+      }
+    }
+
+    results.summary = `Deleted ${results.deleted.length}/${results.total} playbooks`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(results, null, 2),
+        },
+      ],
+    };
   }
 
   if (name === 'watch_playbook') {
