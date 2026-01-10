@@ -123,6 +123,8 @@ The server exposes the following resources via the `ara://` URI scheme:
 - **ara_query** - Query arbitrary Ara API endpoints with GET/POST support and automatic pagination
 - **watch_playbook** - Monitor a specific playbook execution with detailed progress tracking, task completion status, and execution timeline
 - **get_playbook_status** - Get a quick summary of playbook execution status without detailed task information
+- **delete_playbook** - Delete a single playbook record and all associated plays, tasks, and results
+- **delete_playbooks_bulk** - Delete multiple playbook records concurrently with configurable concurrency limit
 
 ## Technical Details
 
@@ -183,6 +185,7 @@ Configuration can be provided via environment variables or CLI arguments. CLI ar
 | `--api-server <url>` | `ARA_API_SERVER` | Base URL of the Ara API server | `http://localhost:8000` | No |
 | `--username <user>` | `ARA_USERNAME` | Username for HTTP Basic Authentication | None | No |
 | `--password <pass>` | `ARA_PASSWORD` | Password for HTTP Basic Authentication | None | No |
+| `--concurrency <num>` | `ARA_CONCURRENCY` | Max concurrent requests for bulk operations | `5` | No |
 
 **Priority**: CLI arguments > Environment variables > Defaults
 
@@ -204,6 +207,23 @@ Additional authentication methods (API tokens, OAuth, etc.) may be added in futu
         "ARA_API_SERVER": "https://ara.example.com",
         "ARA_USERNAME": "your-username",
         "ARA_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+**Example with Custom Concurrency for Bulk Operations**:
+
+```json
+{
+  "mcpServers": {
+    "ara-api": {
+      "command": "node",
+      "args": ["node_modules/ara-records-mcp/ara-server.js"],
+      "env": {
+        "ARA_API_SERVER": "http://localhost:8000",
+        "ARA_CONCURRENCY": "10"
       }
     }
   }
@@ -386,6 +406,35 @@ mcp__ara-api__get_playbook_status({ playbook_id: 2510 })
 // - Start/end times and duration
 // - Playbook path
 ```
+
+### Delete a Single Playbook
+
+Permanently remove a playbook and all associated data:
+
+```javascript
+mcp__ara-api__delete_playbook({ playbook_id: 2510 })
+
+// Returns:
+// { "success": true, "message": "Playbook 2510 deleted successfully" }
+```
+
+### Bulk Delete Playbooks
+
+Delete multiple playbooks concurrently:
+
+```javascript
+mcp__ara-api__delete_playbooks_bulk({ playbook_ids: [2510, 2511, 2512, 2513] })
+
+// Returns:
+// {
+//   "total": 4,
+//   "deleted": [2510, 2511, 2512, 2513],
+//   "failed": [],
+//   "summary": "Deleted 4/4 playbooks"
+// }
+```
+
+The bulk delete operation processes requests concurrently using a configurable concurrency limit (default: 5). Configure via `--concurrency` CLI argument or `ARA_CONCURRENCY` environment variable to balance performance with API server load.
 
 ### Monitor Running Playbooks
 

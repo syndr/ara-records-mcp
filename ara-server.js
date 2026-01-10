@@ -27,12 +27,14 @@ Options:
   --api-server <url>    ARA API server URL (default: http://localhost:8000)
   --username <user>     Username for HTTP Basic Authentication
   --password <pass>     Password for HTTP Basic Authentication
+  --concurrency <num>   Max concurrent requests for bulk operations (default: 5)
   --help, -h            Show this help message
 
 Environment Variables (lower priority than CLI args):
   ARA_API_SERVER        Same as --api-server
   ARA_USERNAME          Same as --username
   ARA_PASSWORD          Same as --password
+  ARA_CONCURRENCY       Same as --concurrency
 
 Examples:
   ara-records-mcp
@@ -49,6 +51,8 @@ Examples:
       config.username = args[++i];
     } else if (arg === '--password' && i + 1 < args.length) {
       config.password = args[++i];
+    } else if (arg === '--concurrency' && i + 1 < args.length) {
+      config.concurrency = parseInt(args[++i], 10);
     }
   }
 
@@ -61,6 +65,7 @@ const cliArgs = parseArgs();
 const ARA_API_SERVER = cliArgs.apiServer || process.env.ARA_API_SERVER || 'http://localhost:8000';
 const ARA_USERNAME = cliArgs.username || process.env.ARA_USERNAME;
 const ARA_PASSWORD = cliArgs.password || process.env.ARA_PASSWORD;
+const ARA_CONCURRENCY = cliArgs.concurrency || parseInt(process.env.ARA_CONCURRENCY, 10) || 5;
 const API_PATH = '/api/v1';
 
 // Helper function to create auth headers
@@ -531,7 +536,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       failed: [],
     };
 
-    for (const playbook_id of playbook_ids) {
+    // Helper to delete a single playbook
+    const deletePlaybook = async (playbook_id) => {
       try {
         const deleteUrl = `${ARA_API_SERVER}${API_PATH}/playbooks/${playbook_id}`;
         console.error(`[DEBUG] DELETE URL: ${deleteUrl}`);
@@ -542,12 +548,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         });
 
         if (response.ok || response.status === 204) {
-          results.deleted.push(playbook_id);
+          return { success: true, id: playbook_id };
         } else {
-          results.failed.push({ id: playbook_id, error: `HTTP ${response.status}: ${response.statusText}` });
+          return { success: false, id: playbook_id, error: `HTTP ${response.status}: ${response.statusText}` };
         }
       } catch (error) {
-        results.failed.push({ id: playbook_id, error: error.message });
+        return { success: false, id: playbook_id, error: error.message };
+      }
+    };
+
+    // Process in batches with concurrency limit
+    for (let i = 0; i < playbook_ids.length; i += ARA_CONCURRENCY) {
+      const batch = playbook_ids.slice(i, i + ARA_CONCURRENCY);
+      const batchResults = await Promise.all(batch.map(deletePlaybook));
+
+      for (const result of batchResults) {
+        if (result.success) {
+          results.deleted.push(result.id);
+        } else {
+          results.failed.push({ id: result.id, error: result.error });
+        }
       }
     }
 
@@ -663,6 +683,7 @@ async function main() {
   console.error(`[STARTUP] ARA_API_SERVER: ${ARA_API_SERVER}`);
   console.error(`[STARTUP] ARA_USERNAME: ${ARA_USERNAME}`);
   console.error(`[STARTUP] ARA_PASSWORD: ${ARA_PASSWORD ? '***SET***' : '***NOT SET***'}`);
+  console.error(`[STARTUP] ARA_CONCURRENCY: ${ARA_CONCURRENCY}`);
 
   // Perform health check before starting MCP server
   await checkAraServerHealth();
