@@ -455,8 +455,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`HTTP ${response.status}: ${response.statusText} - URL: ${fullUrl}`);
       }
 
-      // DELETE requests may return 204 No Content
-      if (response.status === 204 || method === 'DELETE') {
+      // Handle 204 No Content responses (commonly returned by successful DELETE requests)
+      if (response.status === 204) {
         return {
           content: [
             {
