@@ -58,10 +58,10 @@ test('getResourcesList - contains all expected ara:// URIs', () => {
 });
 
 // Test getToolsList()
-test('getToolsList - returns array of 3 tools', () => {
+test('getToolsList - returns array of 5 tools', () => {
   const tools = getToolsList();
   assert.strictEqual(Array.isArray(tools), true);
-  assert.strictEqual(tools.length, 3);
+  assert.strictEqual(tools.length, 5);
 });
 
 test('getToolsList - each tool has required fields', () => {
@@ -82,6 +82,8 @@ test('getToolsList - contains expected tool names', () => {
   assert.ok(names.includes('ara_query'), 'Should include ara_query tool');
   assert.ok(names.includes('watch_playbook'), 'Should include watch_playbook tool');
   assert.ok(names.includes('get_playbook_status'), 'Should include get_playbook_status tool');
+  assert.ok(names.includes('delete_playbook'), 'Should include delete_playbook tool');
+  assert.ok(names.includes('delete_playbooks_bulk'), 'Should include delete_playbooks_bulk tool');
 });
 
 test('getToolsList - ara_query has correct required parameters', () => {
@@ -109,6 +111,25 @@ test('getToolsList - get_playbook_status has correct required parameters', () =>
   assert.ok(getStatus, 'get_playbook_status tool should exist');
   assert.ok(getStatus.inputSchema.properties.playbook_id, 'Should have playbook_id property');
   assert.strictEqual(getStatus.inputSchema.required.includes('playbook_id'), true, 'playbook_id should be required');
+});
+
+test('getToolsList - delete_playbook has correct required parameters', () => {
+  const tools = getToolsList();
+  const deletePlaybook = tools.find(t => t.name === 'delete_playbook');
+
+  assert.ok(deletePlaybook, 'delete_playbook tool should exist');
+  assert.ok(deletePlaybook.inputSchema.properties.playbook_id, 'Should have playbook_id property');
+  assert.strictEqual(deletePlaybook.inputSchema.required.includes('playbook_id'), true, 'playbook_id should be required');
+});
+
+test('getToolsList - delete_playbooks_bulk has correct required parameters', () => {
+  const tools = getToolsList();
+  const deleteBulk = tools.find(t => t.name === 'delete_playbooks_bulk');
+
+  assert.ok(deleteBulk, 'delete_playbooks_bulk tool should exist');
+  assert.ok(deleteBulk.inputSchema.properties.playbook_ids, 'Should have playbook_ids property');
+  assert.strictEqual(deleteBulk.inputSchema.properties.playbook_ids.type, 'array', 'playbook_ids should be array type');
+  assert.strictEqual(deleteBulk.inputSchema.required.includes('playbook_ids'), true, 'playbook_ids should be required');
 });
 
 // Test mapResourceUriToEndpoint()
